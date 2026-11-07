@@ -12,5 +12,3 @@ __pycache__/
 # Configuration IDE (PyCharm)
 .idea/
 
-# Images / Exports générés (optionnel si tu ne veux pas les pousser)
-outputs/figures/*.png
