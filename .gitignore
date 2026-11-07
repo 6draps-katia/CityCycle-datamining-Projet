@@ -1,0 +1,16 @@
+# Environnement virtuel
+.venv/
+venv/
+
+# Configuration locale et variables d'environnement
+.env
+
+# Fichiers générés et caches Python
+__pycache__/
+*.pyc
+
+# Configuration IDE (PyCharm)
+.idea/
+
+# Images / Exports générés (optionnel si tu ne veux pas les pousser)
+outputs/figures/*.png
