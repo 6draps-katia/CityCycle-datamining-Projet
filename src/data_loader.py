@@ -54,7 +54,7 @@ def clean_abonnes(df_abonnes):
     df = df.drop_duplicates()
 
     if 'a_renouvele' in df.columns:
-        # Un abonné qui a plus de 3 incidents_signales et fait moins de 2 trajets_par_mois a 85 % de chances d'avoir un target_churn = 0 (résiliation).
+        # Un abonné qui a plus de 3 incidents_signales et fait moins de 2 trajets_par_mois a 85 % de chances d'avoir un target_churn = 0 résiliation.
         df['target_churn'] = df['a_renouvele'].apply(
             lambda x: 0 if str(x).lower().strip() in ['non', 'false', '0'] else 1
         )
@@ -67,8 +67,7 @@ def get_prepared_dataset():
     df_stations, df_trajets, df_abonnes = load_raw_data()
     return clean_stations(df_stations), clean_trajets(df_trajets), clean_abonnes(df_abonnes)
 
-
-# --- TEST RAPIDE ---
+#test
 if __name__ == "__main__":
     df_stations, df_trajets, df_abonnes = get_prepared_dataset()
 

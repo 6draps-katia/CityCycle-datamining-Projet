@@ -5,7 +5,7 @@
 Citycycle exploite 1 800 vélos sur 140 stations pour le compte d'une collectivité. Deux stations sur trois sont vides aux heures de pointe pendant que d'autres débordent, et le rééquilibrage se fait au jugé depuis trois ans. La collectivité a prévenu : si le taux de disponibilité ne remonte pas, la délégation ne sera pas renouvelée.
 
 ### 📍 Synthèse de la Problématique
-![Analyse de la problématique Citycycle](outputs/figures/cluster_geographie.png)
+![Analyse de la problématique Citycycle](outputs/figures/problématique.png)
 
 ---
 
@@ -43,13 +43,13 @@ Le module `src/data_loader.py` prend en charge le nettoyage et l'enrichissement 
 ### 📈 Résultats Visuels & Analyse
 
 #### Figure 1 : Exploitation (`Capacité` vs `Interventions/mois`)
-![Segmentation par Exploitation](outputs/figures/cluster_exploitation.png)
+![Segmentation par Exploitation](outputs/figures/cluster_explo.png)
 
 * **Résultat :** À capacité égale (~22 bornes), le **Cluster 2** demande beaucoup plus d'interventions (**~5,9/mois**) que le **Cluster 1** (**~4,4/mois**).
 * **Raisonnement :** Ce n'est pas la taille de la station qui crée les problèmes, mais l'usage et le relief.
 
 #### Figure 2 : Carte Géographique (`Longitude` vs `Latitude`)
-![Carte Géographique des Clusters](outputs/figures/cluster_geographie.png)
+![Carte Géographique des Clusters](outputs/figures/cluster_geo.png)
 
 * **Résultat :** Les 3 couleurs forment 3 zones géographiques bien séparées sur la carte de la ville.
 * **Raisonnement :** L'algorithme a retrouvé tout seul la géographie de la ville (hypercentre, quartiers résidentiels plats et quartiers en hauteur).
