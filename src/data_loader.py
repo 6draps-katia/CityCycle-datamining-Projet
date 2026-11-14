@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 
+#Module de chargement et de nettoyage des données brutes CityCycle.
+#Gère l'importation dynamique, la suppression des doublons et l'imputation des valeurs manquantes (NaN).
 
 def load_raw_data(data_dir="data"):
     """Charge les 3 fichiers CSV bruts depuis la racine du projet."""
