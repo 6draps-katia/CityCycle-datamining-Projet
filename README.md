@@ -46,6 +46,7 @@ Le module `src/data_loader.py` prend en charge le nettoyage et l'enrichissement 
 ![Segmentation par Exploitation](outputs/figures/cluster_explo.png)
 
 * **Résultat :** À capacité égale (~22 bornes), le **Cluster 2** demande beaucoup plus d'interventions (**~5,9/mois**) que le **Cluster 1** (**~4,4/mois**).
+![Resultats en tableau](outputs/figures/resultat.png)
 * **Raisonnement :** Ce n'est pas la taille de la station qui crée les problèmes, mais l'usage et le relief.
 
 #### Figure 2 : Carte Géographique (`Longitude` vs `Latitude`)
