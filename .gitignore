@@ -12,3 +12,4 @@ __pycache__/
 # Configuration IDE (PyCharm)
 .idea/
 
+.DS_Store
