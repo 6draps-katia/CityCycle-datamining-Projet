@@ -6,9 +6,9 @@ def load_raw_data(data_dir="data"):
     base_dir = os.path.dirname(os.path.dirname(__file__))
     data_path = os.path.join(base_dir, data_dir)
 
-    path_stations = os.path.join(data_path, "Citycycle_stations.csv")
-    path_trajets = os.path.join(data_path, "Citycycle_trajets.csv")
-    path_abonnes = os.path.join(data_path, "Citycycle_abonnes.csv")
+    path_stations = os.path.join(data_path, "data/raw/Citycycle_stations.csv")
+    path_trajets = os.path.join(data_path, "data/raw/Citycycle_trajets.csv")
+    path_abonnes = os.path.join(data_path, "data/raw/Citycycle_abonnes.csv")
 
     df_stations = pd.read_csv(path_stations)
     df_trajets = pd.read_csv(path_trajets)
