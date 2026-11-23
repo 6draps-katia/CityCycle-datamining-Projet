@@ -1,11 +1,8 @@
 import os
 import pandas as pd
 
-#Module de chargement et de nettoyage des données brutes CityCycle.
-#Gère l'importation dynamique, la suppression des doublons et l'imputation des valeurs manquantes (NaN).
 
 def load_raw_data(data_dir="data"):
-    """Charge les 3 fichiers CSV bruts depuis la racine du projet."""
     base_dir = os.path.dirname(os.path.dirname(__file__))
     data_path = os.path.join(base_dir, data_dir)
 
@@ -21,11 +18,9 @@ def load_raw_data(data_dir="data"):
 
 
 def clean_stations(df_stations):
-    """Nettoyage et validation de Citycycle_stations.csv"""
     df = df_stations.copy()
     df = df.drop_duplicates()
 
-    # Remplace par le vrai nom de ta colonne (ex: 'interventions_mois')
     if 'interventions_mois' in df.columns:
         df['interventions_mois'] = df['interventions_mois'].fillna(0)
 
@@ -33,14 +28,21 @@ def clean_stations(df_stations):
 
 
 def clean_trajets(df_trajets):
-    """Nettoyage et Feature Engineering sur Citycycle_trajets.csv"""
     df = df_trajets.copy()
     df = df.drop_duplicates()
 
     if 'heure' in df.columns:
-        df['datetime'] = pd.to_datetime(df['heure'])
-        df['heure_int'] = df['datetime'].dt.hour
+        df['heure_int'] = df['heure'].astype(int)
         df['est_heure_pointe'] = df['heure_int'].isin([7, 8, 9, 17, 18, 19]).astype(int)
+
+    if 'duree' in df.columns:
+        df = df[df['duree'] != 1440]
+
+    if 'distance' in df.columns:
+        df = df[df['distance'] > 0]
+
+    if 'temperature' in df.columns:
+        df['temperature'] = df['temperature'].fillna(df['temperature'].median())
 
     if 'pluie' in df.columns:
         df['est_pluie'] = df['pluie'].apply(lambda x: 1 if str(x).lower().strip() in ['oui', 'true', '1'] else 0)
@@ -49,34 +51,29 @@ def clean_trajets(df_trajets):
 
 
 def clean_abonnes(df_abonnes):
-    """Nettoyage et préparation de Citycycle_abonnes.csv"""
     df = df_abonnes.copy()
     df = df.drop_duplicates()
 
+    if 'type_abonnement' in df.columns:
+        df['type_abonnement'] = df['type_abonnement'].fillna('inconnu')
+
     if 'a_renouvele' in df.columns:
-        # Un abonné qui a plus de 3 incidents_signales et fait moins de 2 trajets_par_mois a 85 % de chances d'avoir un target_churn = 0 résiliation.
         df['target_churn'] = df['a_renouvele'].apply(
-            lambda x: 0 if str(x).lower().strip() in ['non', 'false', '0'] else 1
+            lambda x: 1 if str(x).lower().strip() in ['non', 'false', '0'] else 0
         )
 
     return df
 
 
 def get_prepared_dataset():
-    """Fonction unifiée qui charge et nettoie l'ensemble du dataset."""
     df_stations, df_trajets, df_abonnes = load_raw_data()
     return clean_stations(df_stations), clean_trajets(df_trajets), clean_abonnes(df_abonnes)
 
-#test
+
 if __name__ == "__main__":
     df_stations, df_trajets, df_abonnes = get_prepared_dataset()
 
     print("Chargement et nettoyage réussis !")
-    print("Stations (nettoyées) :", df_stations.shape)
-    print("Trajets  (préparés)  :", df_trajets.shape)
-    print("Abonnés  (encodés)   :", df_abonnes.shape)
-
-    print("\nNouvelles colonnes trajets :",
-          [c for c in df_trajets.columns if c in ['heure_int', 'est_heure_pointe', 'est_pluie']])
-    print("Nouvelle colonne abonnés   :", [c for c in df_abonnes.columns if c == 'target_churn'])
-
+    print("Stations :", df_stations.shape)
+    print("Trajets  :", df_trajets.shape)
+    print("Abonnés  :", df_abonnes.shape)
