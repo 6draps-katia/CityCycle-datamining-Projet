@@ -54,7 +54,6 @@ Le module `src/data_loader.py` prend en charge le nettoyage et l'enrichissement 
 
 * **Résultat :** Les 3 couleurs forment 3 zones géographiques bien séparées sur la carte de la ville.
 * **Raisonnement :** L'algorithme a retrouvé tout seul la géographie de la ville (hypercentre, quartiers résidentiels plats et quartiers en hauteur).
-
 ---
 
 ### 💼 Réponse Commerciale & Décisions
@@ -64,6 +63,7 @@ L'analyse identifie **3 types de quartiers** :
 1. **Cluster 0 — Quartiers d'Affaires / Hypercentre (51 stations) :** Forte offre et forte demande. Risque de **saturation des bornes** le matin quand tout le monde arrive au travail.
 2. **Cluster 1 — Quartiers Résidentiels (53 stations) :** **Stations vides tôt le matin** lors des départs vers le travail.
 3. **Cluster 2 — Zones en Hauteur / Reliefs (36 stations) :** Altitude élevée (~60 m). Les usagers descendent à vélo en centre-ville mais ne remontent presque jamais les côtes, ce qui vide les stations et use davantage les vélos.
+![Resultats en tableau](outputs/figures/Stationsparcluster.png)
 
 #### 🎯 Plan d'Action
 * **Tournées des camions (6h - 9h) :** Remonter en priorité les vélos vers le **Cluster 2 (hauteurs)** le matin pour garantir la disponibilité aux usagers, et **vider les bornes du Cluster 0 (hypercentre)** avant 9h pour éviter la saturation.
