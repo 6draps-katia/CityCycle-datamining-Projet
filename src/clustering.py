@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
@@ -83,12 +82,9 @@ def plot_clusters(df_clustered):
 
 #test
 if __name__ == "__main__":
-    from data_loader import clean_stations
+    from data_loader import load_raw_data, clean_stations
 
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    csv_path = os.path.join(base_dir, "data", "Citycycle_stations.csv")
-
-    raw_df = pd.read_csv(csv_path)
+    raw_df, _, _ = load_raw_data()
     df_stations = clean_stations(raw_df)
 
     df_clustered, model, scaler, score = run_kmeans_clustering(df_stations, n_clusters=3, random_state=42)
