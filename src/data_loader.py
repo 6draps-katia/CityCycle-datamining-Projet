@@ -1,18 +1,30 @@
 import os
 import pandas as pd
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+RAW_DIR = os.path.join(BASE_DIR, "data", "raw")
+PROCESSED_DIR = os.path.join(BASE_DIR, "data", "processed")
+
 VALEURS_OUI = {"oui", "true", "1"}
 VALEURS_NON = {"non", "false", "0"}
-HEURES_POINTE = [7, 8, 9, 17, 18, 19]
+
+# Heures de pointe : 7h-9h et 17h-19h (créneaux 7h00-8h59 et 17h00-18h59)
+HEURES_POINTE = [7, 8, 17, 18]
+
+# Au-delà de 3 h, un trajet est considéré comme aberrant
+# (ex. vélo non restitué enregistré à 1440 min = 24 h)
+DUREE_MAX_MIN = 180
+
+
+def _est_dans(serie, valeurs):
+    """Convertit une colonne texte (oui/non, true/false...) en indicateur 0/1."""
+    return serie.astype(str).str.lower().str.strip().isin(valeurs).astype(int)
 
 
 def load_raw_data():
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    raw_dir = os.path.join(base_dir, "data", "raw")
-
-    stations = pd.read_csv(os.path.join(raw_dir, "Citycycle_stations.csv"))
-    trajets = pd.read_csv(os.path.join(raw_dir, "Citycycle_trajets.csv"))
-    abonnes = pd.read_csv(os.path.join(raw_dir, "Citycycle_abonnes.csv"))
+    stations = pd.read_csv(os.path.join(RAW_DIR, "Citycycle_stations.csv"))
+    trajets = pd.read_csv(os.path.join(RAW_DIR, "Citycycle_trajets.csv"))
+    abonnes = pd.read_csv(os.path.join(RAW_DIR, "Citycycle_abonnes.csv"))
 
     return stations, trajets, abonnes
 
@@ -31,38 +43,27 @@ def clean_trajets(df_trajets):
     df = df_trajets.copy()
     df = df.drop_duplicates()
 
-    if "heure" in df.columns:
-        df["heure_int"] = pd.to_numeric(df["heure"], errors="coerce")
-        df["est_heure_pointe"] = df["heure_int"].isin(HEURES_POINTE).astype(int)
+    # Suppression des valeurs aberrantes (avant toute imputation)
+    df = df[df["duree_min"] <= DUREE_MAX_MIN]
+    df = df[df["distance_km"] > 0]
 
-    if "duree" in df.columns:
-        df = df[df["duree"] != 1440]
+    # Imputation des valeurs manquantes
+    df["temperature_c"] = df["temperature_c"].fillna(df["temperature_c"].median())
+    df["type_abonnement"] = df["type_abonnement"].fillna("inconnu")
 
-    if "distance" in df.columns:
-        df = df[df["distance"] > 0]
+    # Variables dérivées
+    df["est_heure_pointe"] = df["heure"].isin(HEURES_POINTE).astype(int)
+    df["est_pluie"] = _est_dans(df["pluie"], VALEURS_OUI)
 
-    if "temperature" in df.columns:
-        df["temperature"] = df["temperature"].fillna(df["temperature"].median())
-
-    if "pluie" in df.columns:
-        df["est_pluie"] = (
-            df["pluie"].astype(str).str.lower().str.strip().isin(VALEURS_OUI).astype(int)
-        )
-
-    return df
+    return df.reset_index(drop=True)
 
 
 def clean_abonnes(df_abonnes):
     df = df_abonnes.copy()
     df = df.drop_duplicates()
 
-    if "type_abonnement" in df.columns:
-        df["type_abonnement"] = df["type_abonnement"].fillna("inconnu")
-
-    if "a_renouvele" in df.columns:
-        df["target_churn"] = (
-            df["a_renouvele"].astype(str).str.lower().str.strip().isin(VALEURS_NON).astype(int)
-        )
+    # target_churn : 1 = n'a pas renouvelé (churn), 0 = a renouvelé
+    df["target_churn"] = _est_dans(df["a_renouvele"], VALEURS_NON)
 
     return df
 
@@ -73,10 +74,21 @@ def get_prepared_dataset():
     return clean_stations(stations), clean_trajets(trajets), clean_abonnes(abonnes)
 
 
+def save_prepared_dataset(df_stations, df_trajets, df_abonnes):
+    """Exporte les données nettoyées dans data/processed/."""
+    os.makedirs(PROCESSED_DIR, exist_ok=True)
+
+    df_stations.to_csv(os.path.join(PROCESSED_DIR, "stations_clean.csv"), index=False)
+    df_trajets.to_csv(os.path.join(PROCESSED_DIR, "trajets_clean.csv"), index=False)
+    df_abonnes.to_csv(os.path.join(PROCESSED_DIR, "abonnes_clean.csv"), index=False)
+
+
 if __name__ == "__main__":
     df_stations, df_trajets, df_abonnes = get_prepared_dataset()
+    save_prepared_dataset(df_stations, df_trajets, df_abonnes)
 
     print("Chargement et nettoyage réussis !")
     print("Stations :", df_stations.shape)
-    print("Trajets  :", df_trajets)
+    print("Trajets  :", df_trajets.shape)
     print("Abonnés  :", df_abonnes.shape)
+    print("Fichiers exportés dans :", PROCESSED_DIR)

@@ -6,6 +6,7 @@ venv/
 .env
 
 # Fichiers générés et caches Python
+data/processed/
 __pycache__/
 *.pyc
 

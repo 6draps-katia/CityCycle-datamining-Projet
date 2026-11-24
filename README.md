@@ -22,9 +22,15 @@ Le présent document retrace l'intégralité de notre démarche CRISP-DM questio
 
 Le module `src/data_loader.py` prend en charge le nettoyage et l'enrichissement des données sources pour alimenter les modèles d'analyse :
 
-* **Stations (`Citycycle_stations.csv`) :** Suppressions des doublons et imputation des valeurs manquantes d'interventions à 0.
-* **Trajets (`Citycycle_trajets.csv`) :** Parsing temporel (`datetime`), extraction de l'heure et du jour, et création d'un indicateur binaire d'heures de pointe (7h-9h / 17h-19h).
-* **Abonnés (`Citycycle_abonnes.csv`) :** Standardisation de la variable de résiliation (`target_churn` : 0 = résilié, 1 = renouvelé) pour la classification.
+* **Stations (`Citycycle_stations.csv`, 140 lignes) :** Données déjà propres (aucun doublon, aucune valeur manquante). Le module supprime par sécurité les doublons éventuels et impute à 0 les interventions manquantes.
+* **Trajets (`Citycycle_trajets.csv`, 760 → 692 lignes) :**
+  * Suppression de 60 doublons ;
+  * Suppression des valeurs aberrantes : 3 trajets de 1440 min (24 h, vélos non restitués ; seuil retenu : 180 min) et 5 trajets de distance ≤ 0 ;
+  * Imputation de la température manquante par la médiane et du type d'abonnement manquant par `inconnu` ;
+  * Création des indicateurs binaires `est_heure_pointe` (créneaux 7h-9h et 17h-19h, soit les heures 7, 8, 17 et 18) et `est_pluie`.
+* **Abonnés (`Citycycle_abonnes.csv`, 500 lignes) :** Création de la variable cible `target_churn` pour la classification (1 = n'a pas renouvelé, 0 = a renouvelé).
+
+Les données nettoyées sont exportées dans `data/processed/` en exécutant `python src/data_loader.py`.
 
 ---
 
