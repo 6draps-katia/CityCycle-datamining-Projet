@@ -23,14 +23,15 @@ Le présent document retrace l'intégralité de notre démarche CRISP-DM questio
 Le module `src/data_loader.py` prend en charge le nettoyage et l'enrichissement des données sources pour alimenter les modèles d'analyse :
 
 * **Stations (`Citycycle_stations.csv`, 140 lignes) :** Données déjà propres (aucun doublon, aucune valeur manquante). Le module supprime par sécurité les doublons éventuels et impute à 0 les interventions manquantes.
-* **Trajets (`Citycycle_trajets.csv`, 760 → 692 lignes) :**
+* **Trajets (`Citycycle_trajets.csv`, 760 → 697 lignes) :**
   * Suppression de 60 doublons ;
-  * Suppression des valeurs aberrantes : 3 trajets de 1440 min (24 h, vélos non restitués ; seuil retenu : 180 min) et 5 trajets de distance ≤ 0 ;
+  * Suppression de 3 trajets de 1440 min (24 h, vélos non restitués ; seuil retenu : 180 min) ;
+  * Recalcul des 3 distances à −1 à partir des coordonnées des stations (`distance_km` est une distance à vol d'oiseau) et repérage des 2 trajets en boucle de distance nulle (`est_boucle`) ;
   * Imputation de la température manquante par la médiane et du type d'abonnement manquant par `inconnu` ;
   * Création des indicateurs binaires `est_heure_pointe` (créneaux 7h-9h et 17h-19h, soit les heures 7, 8, 17 et 18) et `est_pluie`.
 * **Abonnés (`Citycycle_abonnes.csv`, 500 lignes) :** Création de la variable cible `target_churn` pour la classification (1 = n'a pas renouvelé, 0 = a renouvelé).
 
-Les données nettoyées sont exportées dans `data/processed/` en exécutant `python src/data_loader.py`.
+Les données nettoyées sont exportées dans `data/processed/` en exécutant `python src/data_loader.py`. Chaque anomalie et la décision prise sont détaillées dans [`docs/journal_donnees.md`](docs/journal_donnees.md).
 
 ---
 
