@@ -19,7 +19,7 @@ def analyse_stations():
     kmeans = KMeans(n_clusters=3, n_init=10, random_state=42)
     df_stations["cluster"] = kmeans.fit_predict(X)
 
-    #Calculer le score de silhouette et la stabilité (ARI)
+    #Calculer le score de silhouette
     score = silhouette_score(X, df_stations["cluster"])
     print(f"Score de silhouette (k=3) : {score:.2f}")
 
