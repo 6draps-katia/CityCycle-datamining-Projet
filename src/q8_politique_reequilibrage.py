@@ -31,7 +31,7 @@ def politique_req():
     st[["departs_matin", "arrivees_matin"]] = st[["departs_matin", "arrivees_matin"]].fillna(0)
     st["solde_matin"] = st["arrivees_matin"] - st["departs_matin"]
 
-    # 4. Associer la politique de rééquilibrage à chaque type
+    # Association de la politique de rééquilibrage à chaque type
     politiques = {
         0: "Passage sur seuil (pas à 7h)",
         1: "Régulation standard en journée",
@@ -39,7 +39,7 @@ def politique_req():
     }
     st["politique"] = st["cluster"].map(politiques)
 
-    # 5. Afficher le tableau de décision par type
+    # Affichage du tableau de décision par type
     print("=== Q8 : Politique de rééquilibrage par type ===")
     print(st.groupby(["cluster", "politique"]).agg(
         nb_stations=("station_id", "count"),
@@ -50,7 +50,7 @@ def politique_req():
         solde_matin=("solde_matin", "mean"),
     ).round(1))
 
-    # 6. Graphique 1 : interventions moyennes par cluster
+    #interventions moyennes par cluster
     plt.figure(figsize=(8, 5))
     sns.barplot(data=st, x="cluster", y="interventions_mois", hue="politique", dodge=False, palette="magma")
     plt.title("Interventions mensuelles moyennes par type")
