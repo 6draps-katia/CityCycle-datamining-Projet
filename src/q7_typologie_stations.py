@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import silhouette_score, adjusted_rand_score
+from sklearn.metrics import silhouette_score
 from data_loader import get_prepared_dataset
 
 
