@@ -15,13 +15,17 @@ def analyse_stations():
     cols = ["capacite", "altitude_m", "interventions_mois"]
     X = StandardScaler().fit_transform(df_stations[cols])
 
+    # Calculer le score de silhouette
+    for k in range(2, 6):
+        labels = KMeans(n_clusters=k, n_init=10, random_state=42).fit_predict(X)
+        score = silhouette_score(X, labels)
+        print(f"Pour k={k} le score de silouhette est : {score:.2f}")
+
+    #le meilleur score est K = 3 car c'est le plus proche de 1 le score = 0.31
+
     #Regrouper les stations en 3 clusters avec K-Means
     kmeans = KMeans(n_clusters=3, n_init=10, random_state=42)
     df_stations["cluster"] = kmeans.fit_predict(X)
-
-    #Calculer le score de silhouette
-    score = silhouette_score(X, df_stations["cluster"])
-    print(f"Score de silhouette (k=3) : {score:.2f}")
 
 
     #Résumer chaque cluster par moyenne et effectif
