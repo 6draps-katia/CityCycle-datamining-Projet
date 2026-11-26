@@ -34,49 +34,6 @@ Le module `src/data_loader.py` prend en charge le nettoyage et l'enrichissement 
 Les données nettoyées sont exportées dans `data/processed/` en exécutant `python src/data_loader.py`. Chaque anomalie et la décision prise sont détaillées dans [`docs/journal_donnees.md`](docs/journal_donnees.md).
 
 ---
-
-## 📊 3. Question 1 : Segmentation des Stations (Clustering K-Means)
-
-### ❓ Problématique Métier
-> *Comment regrouper les 140 stations qui rencontrent les mêmes problèmes (manque de vélos, saturation, pannes) afin d'organiser le rééquilibrage par type de quartier ?*
-
-### ⚙️ Méthode Retenue (`src/clustering.py`)
-* **Algorithme :** **K-Means ($K=3$)** — Choisi car nous n'avons pas d'étiquettes de quartiers dans le fichier CSV ; l'algorithme regroupe les stations automatiquement selon leurs points communs.
-* **Prétraitement :** Suppression de `station_id` et mise à l'échelle des données (`StandardScaler`) pour que l'altitude et le nombre d'interventions aient le même poids.
-* **Validation :** Score de Silhouette de **`0.2708`** (séparation cohérente des 3 groupes).
-
----
-
-### 📈 Résultats Visuels & Analyse
-
-#### Figure 1 : Exploitation (`Capacité` vs `Interventions/mois`)
-![Segmentation par Exploitation](outputs/figures/cluster_explo.png)
-
-* **Résultat :** À capacité égale (~22 bornes), le **Cluster 2** demande beaucoup plus d'interventions (**~5,9/mois**) que le **Cluster 1** (**~4,4/mois**).
-![Resultats en tableau](outputs/figures/resultat.png)
-* **Raisonnement :** Ce n'est pas la taille de la station qui crée les problèmes, mais l'usage et le relief.
-
-#### Figure 2 : Carte Géographique (`Longitude` vs `Latitude`)
-![Carte Géographique des Clusters](outputs/figures/cluster_geo.png)
-
-* **Résultat :** Les 3 couleurs forment 3 zones géographiques bien séparées sur la carte de la ville.
-* **Raisonnement :** L'algorithme a retrouvé tout seul la géographie de la ville (hypercentre, quartiers résidentiels plats et quartiers en hauteur).
----
-
-### 💼 Réponse Commerciale & Décisions
-
-L'analyse identifie **3 types de quartiers** :
-
-1. **Cluster 0 — Quartiers d'Affaires / Hypercentre (51 stations) :** Forte offre et forte demande. Risque de **saturation des bornes** le matin quand tout le monde arrive au travail.
-2. **Cluster 1 — Quartiers Résidentiels (53 stations) :** **Stations vides tôt le matin** lors des départs vers le travail.
-3. **Cluster 2 — Zones en Hauteur / Reliefs (36 stations) :** Altitude élevée (~60 m). Les usagers descendent à vélo en centre-ville mais ne remontent presque jamais les côtes, ce qui vide les stations et use davantage les vélos.
-![Resultats en tableau](outputs/figures/Stationsparcluster.png)
-
-#### 🎯 Plan d'Action
-* **Tournées des camions (6h - 9h) :** Remonter en priorité les vélos vers le **Cluster 2 (hauteurs)** le matin pour garantir la disponibilité aux usagers, et **vider les bornes du Cluster 0 (hypercentre)** avant 9h pour éviter la saturation.
-* **Bonus Remontée :** Offrir des minutes gratuites aux abonnés qui ramènent un vélo du centre-ville vers les hauteurs (Cluster 2).
-* **Maintenance ciblée :** Renforcer l'entretien technique sur les stations du Cluster 2.
-
 ### Q5 : quand et à quels signes repérer le non-renouvellement ?
 
 **Ce que j'ai compris.** Sur les 360 abonnés annuels, 22 % (78) n'ont pas renouvelé.
@@ -124,3 +81,25 @@ données.
 
 **Recommandation.** Cibler en priorité le tiers d'abonnés les plus à risque, et
 seulement si l'action de rétention coûte moins du tiers du prix de l'abonnement.
+
+### Question 7 : identification des profils types de stations sur le réseau CityCycle ?
+
+- **Compréhension de la question :** L'objectif est de regrouper les 140 stations du réseau en familles homogènes afin de repérer celles qui partagent le même fonctionnement et d'isoler les stations les plus critiques pour l'exploitation.
+
+- **Méthode retenue et justification :** Nous avons appliqué un clustering **K-Means** sur trois variables d'exploitation (`capacite`, `altitude_m`, `interventions_mois`) préalablement standardisées, puis enrichi l'analyse avec les flux matinaux issus de `features.py` (`dep_matin`, `arr_matin`, `taux_vidage`) et le type de quartier. Le choix de **$k = 3$** repose sur le croisement entre la méthode du coude (baisse nette de l'inertie), le score de silhouette ($0{,}31$, valeur maximale parmi $k \in [2..5]$) et la lisibilité opérationnelle.
+
+- **Conclusion :** Trois profils distincts émergent : des stations calmes en altitude, de grandes stations à forte capacité au fonctionnement régulier, et un groupe critique restreint de **15 stations** (dont 13 gares) qui concentrent en moyenne **$12{,}9$ interventions par mois** (contre environ $4$ pour les autres groupes).
+
+### Question 8 — Quelle politique de rééquilibrage appliquer selon le type de station ?
+
+- **Compréhension de la question :** Il s'agit de traduire la typologie obtenue en règles concrètes d'intervention sur le terrain, en ciblant les bons créneaux horaires (notamment la pointe du matin entre 6 h et 9 h) selon les besoins réels de chaque groupe de stations.
+
+- **Méthode retenue et justification :** À partir des clusters identifiés à la question 7 et des départs/arrivées du matin calculés via `features.py`, nous avons comparé les volumes d'interventions et le solde matinal de chaque groupe afin d'attribuer dynamiquement une règle de gestion adaptée à son profil.
+
+- **Conclusion :** Les efforts de rééquilibrage doivent être concentrés dès **7 h du matin** en priorité sur le groupe des **15 stations de gare** très sollicitées (`Priorité haute dès 7h`), tandis que les grandes stations relèvent d'une régulation standard en journée et les stations calmes en altitude d'un simple passage sur alerte.
+
+### Recommandations opérationnelles
+
+- **Affecter les équipes de 7 h aux 15 stations critiques (gares) :** concentrer les camions de rééquilibrage dès l'ouverture de la pointe matinale (6 h – 9 h) sur ces stations à forte rotation pour éviter qu'elles ne se vident ou ne saturent.
+- **Décaler la régulation des grandes stations en journée :** programmer les passages sur les grandes stations en heures creuses afin de libérer les équipes du matin pour les gares.
+- **Passer à une gestion sur seuil pour les stations en altitude :** supprimer les tournées systématiques sur ce groupe calme et n'intervenir qu'en cas d'alerte de remplissage.
