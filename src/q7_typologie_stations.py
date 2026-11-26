@@ -1,40 +1,51 @@
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
 from sklearn.cluster import KMeans
-from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import silhouette_score
+from sklearn.preprocessing import StandardScaler
+
 from data_loader import get_prepared_dataset
+from features import flux_station_heure, profil_stations
 
 
 def analyse_stations():
     #Charger les données nettoyées des stations
-    df_stations, _, _ = get_prepared_dataset()
+    df_stations, df_trajets, _ = get_prepared_dataset()
 
-    #Choisir les 3 variables d'exploitation et les mettre à la même échelle
+    #Récupération des variables de flux avec features.py
+    flux = flux_station_heure(df_trajets, df_stations)
+    df_profil = profil_stations(flux, df_stations)
+
+    #Choisir les 3 variables d'exploitation et standarisation
     cols = ["capacite", "altitude_m", "interventions_mois"]
     X = StandardScaler().fit_transform(df_stations[cols])
 
-    # Calculer le score de silhouette
+    # Calcul du score de silhouette et l'inertie
     for k in range(2, 6):
-        labels = KMeans(n_clusters=k, n_init=10, random_state=42).fit_predict(X)
+        km = KMeans(n_clusters=k, n_init=10, random_state=42)
+        labels = km.fit_predict(X)
         score = silhouette_score(X, labels)
-        print(f"Pour k={k} le score de silouhette est : {score:.2f}")
+        print(f"Pour k={k} le score de silouhette est : {score:.2f} | inertie : {km.inertia_:.1f}")
 
-    #le meilleur score est K = 3 car c'est le plus proche de 1 le score = 0.31
+    # Pour k = 3, les stations sont bien regroupées autour du centre (inertie plus faible)
+    # et le score de silhouette atteint son maximum (0.31) par rapport aux autres k.
 
     #Regrouper les stations en 3 clusters avec K-Means
     kmeans = KMeans(n_clusters=3, n_init=10, random_state=42)
     df_stations["cluster"] = kmeans.fit_predict(X)
+    df_profil["cluster"] = df_stations["cluster"].values
 
-
-    #Résumer chaque cluster par moyenne et effectif
+    #Résumer chaque cluster par moyenne et effectif (avec flux de features.py)
     print("Caractéristiques par cluster")
-    print(df_stations.groupby("cluster").agg(
-        nb_stations=("station_id", "count"),
+    print(df_profil.groupby("cluster").agg(
+        nb_stations=("station", "count"),
         capacite_moy=("capacite", "mean"),
         altitude_moy=("altitude_m", "mean"),
         interventions_moy=("interventions_mois", "mean"),
+        dep_matin_moy=("dep_matin", "mean"),
+        arr_matin_moy=("arr_matin", "mean"),
+        taux_vidage_moy=("taux_vidage", "mean"),
     ).round(1))
 
     print("\nRépartition par type de quartier")
@@ -57,8 +68,12 @@ def analyse_stations():
     plt.tight_layout()
     plt.show()
 
-    return df_stations
+    return df_profil
+
+
+def run():
+    return analyse_stations()
 
 
 if __name__ == "__main__":
-    analyse_stations()
+    run()
