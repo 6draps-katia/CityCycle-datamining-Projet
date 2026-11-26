@@ -97,9 +97,9 @@ seulement si l'action de rétention coûte moins du tiers du prix de l'abonnemen
 - **Méthode retenue et justification :** À partir des clusters identifiés à la question 7 et des départs/arrivées du matin calculés via `features.py`, nous avons comparé les volumes d'interventions et le solde matinal de chaque groupe afin d'attribuer dynamiquement une règle de gestion adaptée à son profil.
 
 - **Conclusion :** Les efforts de rééquilibrage doivent être concentrés dès **7 h du matin** en priorité sur le groupe des **15 stations de gare** très sollicitées (`Priorité haute dès 7h`), tandis que les grandes stations relèvent d'une régulation standard en journée et les stations calmes en altitude d'un simple passage sur alerte.
-
-### Recommandations opérationnelles
-
+- 
 - **Affecter les équipes de 7 h aux 15 stations critiques (gares) :** concentrer les camions de rééquilibrage dès l'ouverture de la pointe matinale (6 h – 9 h) sur ces stations à forte rotation pour éviter qu'elles ne se vident ou ne saturent.
 - **Décaler la régulation des grandes stations en journée :** programmer les passages sur les grandes stations en heures creuses afin de libérer les équipes du matin pour les gares.
-- **Passer à une gestion sur seuil pour les stations en altitude :** supprimer les tournées systématiques sur ce groupe calme et n'intervenir qu'en cas d'alerte de remplissage.
+- **Passer à une gestion sur seuil pour les stations en altitude :** supprimer les tournées systématiques sur ce groupe calme et n'intervenir qu'en cas d'alerte de remplissage ou de pénurie.
+- **Mettre en place des incitations usagers :** proposer un bonus (minutes gratuites ou points via l'application) aux utilisateurs qui déposent un vélo dans une gare en manque ou empruntent un vélo depuis une station saturée.
+- **Ajuster la capacité physique des stations tendues :** augmenter le nombre de bornes sur les stations de gare les plus sollicitées (en redéployant éventuellement des bornes depuis des stations peu utilisées) et orienter les usagers en temps réel vers les stations voisines disponibles.
