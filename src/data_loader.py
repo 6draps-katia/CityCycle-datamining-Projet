@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import pandas as pd
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -39,13 +40,30 @@ def clean_stations(df_stations):
     return df
 
 
-def clean_trajets(df_trajets):
+def _distance_vol_oiseau(df_trajets, df_stations):
+    """Distance en ligne droite (km) entre station de départ et d'arrivée."""
+    coords = df_stations.set_index("station_id")[["longitude_km", "latitude_km"]]
+    depart = coords.loc[df_trajets["station_depart"]].to_numpy()
+    arrivee = coords.loc[df_trajets["station_arrivee"]].to_numpy()
+    return np.hypot(*(depart - arrivee).T).round(2)
+
+
+def clean_trajets(df_trajets, df_stations):
     df = df_trajets.copy()
     df = df.drop_duplicates()
 
-    # Suppression des valeurs aberrantes (avant toute imputation)
-    df = df[df["duree_min"] <= DUREE_MAX_MIN]
-    df = df[df["distance_km"] > 0]
+    # Suppression des durées aberrantes (avant toute imputation)
+    df = df[df["duree_min"] <= DUREE_MAX_MIN].copy()
+
+    # distance_km est la distance à vol d'oiseau entre les stations :
+    # les valeurs négatives (code -1) sont recalculées depuis les coordonnées
+    distance_invalide = df["distance_km"] < 0
+    df.loc[distance_invalide, "distance_km"] = _distance_vol_oiseau(
+        df[distance_invalide], df_stations
+    )
+
+    # Trajets en boucle (départ = arrivée) : distance à vol d'oiseau nulle
+    df["est_boucle"] = (df["station_depart"] == df["station_arrivee"]).astype(int)
 
     # Imputation des valeurs manquantes
     df["temperature_c"] = df["temperature_c"].fillna(df["temperature_c"].median())
@@ -71,7 +89,9 @@ def clean_abonnes(df_abonnes):
 def get_prepared_dataset():
     stations, trajets, abonnes = load_raw_data()
 
-    return clean_stations(stations), clean_trajets(trajets), clean_abonnes(abonnes)
+    stations = clean_stations(stations)
+
+    return stations, clean_trajets(trajets, stations), clean_abonnes(abonnes)
 
 
 def save_prepared_dataset(df_stations, df_trajets, df_abonnes):
