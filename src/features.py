@@ -38,53 +38,6 @@ def preparer_trajets(df_trajets):
     t = df_trajets.copy()
 
     # variables binaires : le loader les a déjà calculées, on les reprend
-# Colonnes déjà présentes dans les fichiers propres : on ne les recalcule pas,
-# on les contrôle. Une divergence signale un fichier qui n'est pas celui attendu.
-COLONNES_TRAJETS = [
-    "trajet_id", "station_depart", "station_arrivee", "heure", "jour", "pluie",
-    "temperature_c", "type_abonnement", "distance_km", "duree_min", "type_velo",
-    "est_heure_pointe", "est_pluie",
-]
-HEURES_POINTE = [7, 8, 9, 16, 17, 18]
-
-
-def charger(chemin_trajets, chemin_stations, chemin_abonnes=None):
-    """Charge les fichiers propres et vérifie que rien n'a été réintroduit."""
-    t = pd.read_csv(chemin_trajets)
-    s = pd.read_csv(chemin_stations)
-    a = pd.read_csv(chemin_abonnes) if chemin_abonnes else None
-
-    alertes = []
-
-    # 1. fichiers annoncés comme nettoyés : les contrôler, sans rien corriger
-    if t.trajet_id.duplicated().any():
-        alertes.append("%d trajet_id en doublon" % int(t.trajet_id.duplicated().sum()))
-    # distance nulle acceptée pour un trajet en boucle (départ = arrivée)
-    boucle = t.station_depart == t.station_arrivee
-    invalide = (t.distance_km < 0) | ((t.distance_km == 0) & ~boucle)
-    if invalide.any():
-        alertes.append("%d distances invalides" % int(invalide.sum()))
-    if (t.duree_min >= 240).any():
-        alertes.append("%d durées aberrantes" % int((t.duree_min >= 240).sum()))
-    if t[["temperature_c", "type_abonnement"]].isna().any().any():
-        alertes.append("valeurs manquantes dans temperature_c ou type_abonnement")
-
-    # 2. colonnes déjà calculées : on réutilise, mais on vérifie la cohérence
-    if "est_heure_pointe" in t:
-        recalcule = t.heure.isin(HEURES_POINTE).astype(int)
-        if (t.est_heure_pointe.astype(int) != recalcule).any():
-            alertes.append("est_heure_pointe incohérente avec la colonne heure")
-    else:
-        t["est_heure_pointe"] = t.heure.isin(HEURES_POINTE).astype(int)
-
-    if "est_pluie" in t:
-        recalcule = (t.pluie == "oui").astype(int)
-        if (t.est_pluie.astype(int) != recalcule).any():
-            alertes.append("est_pluie incohérente avec la colonne pluie")
-    else:
-        t["est_pluie"] = (t.pluie == "oui").astype(int)
-
-    # 3. renommages : une seule convention dans tout le module
     t["heure_pointe"] = t.est_heure_pointe.astype(int)
     t["pluie_bin"] = t.est_pluie.astype(int)
     t["weekend"] = t.jour.isin(["sam", "dim"]).astype(int)
