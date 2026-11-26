@@ -1,16 +1,25 @@
+from pathlib import Path
+
+import matplotlib
+matplotlib.use("Agg")  # pas d'affichage : on enregistre seulement
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
-from data_loader import get_prepared_dataset
-from features import flux_station_heure, profil_stations
+
+try:
+    from .data_loader import get_prepared_dataset
+    from .features import flux_station_heure, profil_stations
+except ImportError:  # exécution directe : python src/q8_politique_reequilibrage.py
+    from data_loader import get_prepared_dataset
+    from features import flux_station_heure, profil_stations
+
+FIG_DIR = Path(__file__).resolve().parents[1] / "outputs" / "figures"
+A_COMPLETER = "à compléter par Katia"
 
 
-def politique_req():
-    # Chargement des données nettoyées (stations et trajets)
-    df_stations, df_trajets, _ = get_prepared_dataset()
-
+def politique_req(df_stations, df_trajets):
     #Identification des types de stations
     cols = ["capacite", "altitude_m", "interventions_mois"]
     X = StandardScaler().fit_transform(df_stations[cols])
@@ -62,6 +71,8 @@ def politique_req():
     ).round(1)
     print(tableau.to_string())
 
+    FIG_DIR.mkdir(parents=True, exist_ok=True)
+
     #interventions moyennes par cluster
     plt.figure(figsize=(8, 5))
     sns.barplot(data=stations, x="cluster", y="interventions_mois", hue="politique", dodge=False, palette="magma")
@@ -70,7 +81,8 @@ def politique_req():
     plt.ylabel("Interventions / mois")
     plt.grid(axis="y", alpha=0.3)
     plt.tight_layout()
-    plt.show()
+    plt.savefig(FIG_DIR / "q8_interventions.png", dpi=150)
+    plt.close()
 
     #départs vs arrivées le matin (6h-9h)
     flux_moy = stations.groupby("cluster")[["departs_matin", "arrivees_matin"]].mean()
@@ -81,14 +93,53 @@ def politique_req():
     plt.xticks(rotation=0)
     plt.legend(["Départs matin", "Arrivées matin"])
     plt.grid(axis="y", alpha=0.6)
-    plt.show()
+    plt.savefig(FIG_DIR / "q8_flux_matin.png", dpi=150)
+    plt.close()
 
-    return stations
+    return stations, tableau
 
 
-def run():
-    return politique_req()
+def run(stations, trajets, abonnes):
+    # copie : run_analysis.py passe les mêmes tables à tous les modules
+    df, tableau = politique_req(stations.copy(), trajets)
+
+    par_politique = tableau.reset_index().set_index("politique")
+    texte_politiques = " ; ".join(
+        f"{pol} : {int(l.nb_stations)} stations (cluster {int(l.cluster)}), "
+        f"{l.interventions_moy} interventions/mois en moyenne, solde du matin {l.solde_matin:+}"
+        for pol, l in par_politique.iterrows()
+    )
+    prioritaire = par_politique.loc["Priorité haute dès 7h"]
+
+    return {
+        "question": "Q8",
+        "chiffre_cle": (
+            f"Priorité haute dès 7 h pour {int(prioritaire.nb_stations)} stations "
+            f"({prioritaire.interventions_moy} interventions/mois en moyenne). "
+            f"Politiques attribuées : {texte_politiques}."
+        ),
+        "methode": (
+            "À partir des clusters de Q7 et des départs/arrivées du matin (6 h - 9 h) "
+            "calculés via features.py, comparaison des volumes d'interventions et du solde "
+            "matinal de chaque groupe pour lui attribuer une règle de gestion : priorité "
+            "haute au groupe qui a le plus d'interventions, régulation standard au plus "
+            "grand des autres (capacité), passage sur seuil au dernier."
+        ),
+        "verification": A_COMPLETER,
+        "decision": (
+            "Concentrer le rééquilibrage dès 7 h du matin sur le groupe des 15 stations de "
+            "gare très sollicitées (Priorité haute dès 7h) ; régulation standard en journée "
+            "pour les grandes stations ; simple passage sur alerte pour les stations calmes "
+            "en altitude."
+        ),
+        "gain": A_COMPLETER,
+        "tables": {"politiques": tableau},
+        "figures": ["outputs/figures/q8_interventions.png", "outputs/figures/q8_flux_matin.png"],
+    }
 
 
 if __name__ == "__main__":
-    politique_req()
+    stations, trajets, abonnes = get_prepared_dataset()
+    resultat = run(stations, trajets, abonnes)
+    for cle in ["chiffre_cle", "methode", "decision"]:
+        print(f"\n{cle.upper()}\n{resultat[cle]}")
