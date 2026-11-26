@@ -19,7 +19,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from data_loader import get_prepared_dataset
+try:
+    from .data_loader import get_prepared_dataset
+except ImportError:  # exécution directe : python src/features.py
+    from data_loader import get_prepared_dataset
 
 # --- arborescence de sortie -------------------------------------------------
 # __file__ = .../CityCycle-datamining-Project/src/features.py
