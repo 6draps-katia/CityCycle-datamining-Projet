@@ -32,8 +32,11 @@ def charger(chemin_trajets, chemin_stations, chemin_abonnes=None):
     # 1. fichiers annoncés comme nettoyés : les contrôler, sans rien corriger
     if t.trajet_id.duplicated().any():
         alertes.append("%d trajet_id en doublon" % int(t.trajet_id.duplicated().sum()))
-    if (t.distance_km <= 0).any():
-        alertes.append("%d distances <= 0" % int((t.distance_km <= 0).sum()))
+    # distance nulle acceptée pour un trajet en boucle (départ = arrivée)
+    boucle = t.station_depart == t.station_arrivee
+    invalide = (t.distance_km < 0) | ((t.distance_km == 0) & ~boucle)
+    if invalide.any():
+        alertes.append("%d distances invalides" % int(invalide.sum()))
     if (t.duree_min >= 240).any():
         alertes.append("%d durées aberrantes" % int((t.duree_min >= 240).sum()))
     if t[["temperature_c", "type_abonnement"]].isna().any().any():
