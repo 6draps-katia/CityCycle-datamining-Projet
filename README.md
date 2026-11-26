@@ -28,12 +28,90 @@ Le module `src/data_loader.py` prend en charge le nettoyage et l'enrichissement 
   * Suppression de 3 trajets de 1440 min (24 h, vélos non restitués ; seuil retenu : 180 min) ;
   * Recalcul des 3 distances à −1 à partir des coordonnées des stations (`distance_km` est une distance à vol d'oiseau) et repérage des 2 trajets en boucle de distance nulle (`est_boucle`) ;
   * Imputation de la température manquante par la médiane et du type d'abonnement manquant par `inconnu` ;
-  * Création des indicateurs binaires `est_heure_pointe` (créneaux 7h-9h et 17h-19h, soit les heures 7, 8, 17 et 18) et `est_pluie`.
-* **Abonnés (`Citycycle_abonnes.csv`, 500 lignes) :** Création de la variable cible `target_churn` pour la classification (1 = n'a pas renouvelé, 0 = a renouvelé).
+  * Création des indicateurs binaires `est_heure_pointe` (heures 7, 8, 9, 16, 17 et 18, choisies d'après le volume horaire : 16 h est l'heure la plus chargée) et `est_pluie` ;
+  * Ajout de `categorie_usager` (`abonne` / `non_abonne` / `inconnu`) qui regroupe `ticket` et `occasionnel` sans les fusionner ;
+  * Contrôles `assert` après nettoyage (fonctions `verifier_*`) : le script s'arrête si une anomalie subsiste.
+* **Abonnés (`Citycycle_abonnes.csv`, 500 lignes) :** Création de la variable cible `target_churn` pour la classification (1 = n'a pas renouvelé, 0 = a renouvelé). `filtrer_annuels()` produit `abonnes_annuels_clean.csv` (360 abonnés annuels, population de Q5/Q6).
 
 Les données nettoyées sont exportées dans `data/processed/` en exécutant `python src/data_loader.py`. Chaque anomalie et la décision prise sont détaillées dans [`docs/journal_donnees.md`](docs/journal_donnees.md).
 
 ---
+
+## 📊 3. Question 1 : Segmentation des Stations (Clustering K-Means)
+
+### ❓ Problématique Métier
+> *Comment regrouper les 140 stations qui rencontrent les mêmes problèmes (manque de vélos, saturation, pannes) afin d'organiser le rééquilibrage par type de quartier ?*
+
+### ⚙️ Méthode Retenue (`src/clustering.py`)
+* **Algorithme :** **K-Means ($K=3$)** — Choisi car nous n'avons pas d'étiquettes de quartiers dans le fichier CSV ; l'algorithme regroupe les stations automatiquement selon leurs points communs.
+* **Prétraitement :** Suppression de `station_id` et mise à l'échelle des données (`StandardScaler`) pour que l'altitude et le nombre d'interventions aient le même poids.
+* **Validation :** Score de Silhouette de **`0.2708`** (séparation cohérente des 3 groupes).
+
+---
+
+### 📈 Résultats Visuels & Analyse
+
+#### Figure 1 : Exploitation (`Capacité` vs `Interventions/mois`)
+![Segmentation par Exploitation](outputs/figures/cluster_explo.png)
+
+* **Résultat :** À capacité égale (~22 bornes), le **Cluster 2** demande beaucoup plus d'interventions (**~5,9/mois**) que le **Cluster 1** (**~4,4/mois**).
+![Resultats en tableau](outputs/figures/resultat.png)
+* **Raisonnement :** Ce n'est pas la taille de la station qui crée les problèmes, mais l'usage et le relief.
+
+#### Figure 2 : Carte Géographique (`Longitude` vs `Latitude`)
+![Carte Géographique des Clusters](outputs/figures/cluster_geo.png)
+
+* **Résultat :** Les 3 couleurs forment 3 zones géographiques bien séparées sur la carte de la ville.
+* **Raisonnement :** L'algorithme a retrouvé tout seul la géographie de la ville (hypercentre, quartiers résidentiels plats et quartiers en hauteur).
+---
+
+### 💼 Réponse Commerciale & Décisions
+
+L'analyse identifie **3 types de quartiers** :
+
+1. **Cluster 0 — Quartiers d'Affaires / Hypercentre (51 stations) :** Forte offre et forte demande. Risque de **saturation des bornes** le matin quand tout le monde arrive au travail.
+2. **Cluster 1 — Quartiers Résidentiels (53 stations) :** **Stations vides tôt le matin** lors des départs vers le travail.
+3. **Cluster 2 — Zones en Hauteur / Reliefs (36 stations) :** Altitude élevée (~60 m). Les usagers descendent à vélo en centre-ville mais ne remontent presque jamais les côtes, ce qui vide les stations et use davantage les vélos.
+![Resultats en tableau](outputs/figures/Stationsparcluster.png)
+
+#### 🎯 Plan d'Action
+* **Tournées des camions (6h - 9h) :** Remonter en priorité les vélos vers le **Cluster 2 (hauteurs)** le matin pour garantir la disponibilité aux usagers, et **vider les bornes du Cluster 0 (hypercentre)** avant 9h pour éviter la saturation.
+* **Bonus Remontée :** Offrir des minutes gratuites aux abonnés qui ramènent un vélo du centre-ville vers les hauteurs (Cluster 2).
+* **Maintenance ciblée :** Renforcer l'entretien technique sur les stations du Cluster 2.
+
+---
+
+## 📊 Question 2 : La météo explique-t-elle tout ?
+
+### ❓ Problématique Métier
+> *L'usage dépend-il surtout de la météo, du jour et de l'heure, ou de l'emplacement des stations ?*
+
+Ce que nous avons compris : avant de prévoir (Q3), il faut savoir quels facteurs font vraiment varier le nombre de trajets, pour ne pas tout attribuer à la météo.
+
+### ⚙️ Méthode Retenue
+* **Phase 1 – exploration (`notebooks/q2_exploration.ipynb`) :** trajets moyens par créneau (jour × heure) selon la pluie, la température, semaine/week-end, l'heure et le type de quartier (ramené au nombre de stations). Le rapport max/min utilisé pour comparer les facteurs favorise ceux qui ont beaucoup de modalités (19 heures contre 2 pour la pluie) : il sert d'exploration, pas de conclusion.
+* **Phase 2 – régression de Poisson (`src/q2_facteurs_usage.py`) :** nombre de trajets par cellule jour × heure × pluie × quartier (1 064 cellules), raisonné par station. Pour chaque groupe de variables, on mesure la part de variation expliquée (**D²**, l'équivalent du R² pour un comptage), seul et en plus des autres, en validation croisée (5 plis).
+* **Pourquoi Poisson plutôt que la régression linéaire :** les deux expliquent autant (D² 0,26, R² 0,25) et classent les groupes dans le même ordre, mais on prédit un comptage avec 59 % de zéros : la linéaire prédit des trajets négatifs dans 13 % des cellules. Poisson suppose variance = moyenne, ce que confirment nos résidus (indice de dispersion 1,02). Ses effets se lisent en multiplicateurs. La linéaire est gardée comme contrôle.
+* **Vérifications :** corrélations entre variables très faibles (|r| ≤ 0,04) ; résidus sans tendance par heure, en semaine comme le week-end.
+
+### 📈 Résultats
+![Poids des facteurs](outputs/figures/q2_poids_facteurs.png)
+
+| Groupe | D² seul | En plus des autres |
+|---|---|---|
+| Météo (pluie) | 0,15 | 0,15 |
+| Jour et heure | 0,11 | 0,11 |
+| Emplacement (quartier) | ≈ 0 | ≈ 0 |
+
+* **Jour et heure :** effet net et mesurable, par exemple samedi × 0,53 et dimanche × 0,56 par rapport au lundi.
+* **Emplacement :** à l'échelle d'une station, le type de quartier ne change presque rien au volume de départs.
+* **Météo :** le score de la pluie n'est **pas interprétable**. Les trajets n'ont pas de date, on ne sait donc pas combien de temps il a plu : l'effet mesuré mélange « on roule moins sous la pluie » et « il pleut rarement ». Même limite pour la température, qui n'est pas modélisée.
+
+### 💼 Réponse
+Non, la météo n'explique pas tout : l'heure et le jour expliquent une part nette de l'usage et doivent guider le rééquilibrage. Pour mesurer l'effet propre de la météo, il faudrait la date des trajets ou un relevé météo heure par heure.
+
+---
+
 ### Q5 : quand et à quels signes repérer le non-renouvellement ?
 
 **Ce que j'ai compris.** Sur les 360 abonnés annuels, 22 % (78) n'ont pas renouvelé.
