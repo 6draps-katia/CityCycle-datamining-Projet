@@ -20,10 +20,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-try:
-    from .q5_signaux_non_renouvellement import preparer_annuels, risque_hors_echantillon
-except ImportError:  # exécution hors package
-    from src.q5_signaux_non_renouvellement import preparer_annuels, risque_hors_echantillon
+try:  # importé par run_analysis.py (package src)
+    from .q5_signaux_non_renouvellement import (FEATURES, choisir_k, preparer_annuels,
+                                                risque_hors_echantillon)
+except ImportError:  # lancé directement : python src/q6_cout_retention.py
+    from q5_signaux_non_renouvellement import (FEATURES, choisir_k, preparer_annuels,
+                                               risque_hors_echantillon)
+
+SEEDS_STABILITE = range(10)  # découpages testés pour vérifier la stabilité du résultat
 
 # --- Hypothèses écrites (le sujet ne donne ni prix ni taux de succès) ---
 PRIX_ABONNEMENT = 100.0           # € par an : HYPOTHÈSE
@@ -81,8 +85,18 @@ def scenarios(captes, n, total):
 
 def run(stations, trajets, abonnes):
     df = preparer_annuels(abonnes)
-    risque = risque_hors_echantillon(abonnes)
+    k_voisins, scores_k = choisir_k(df[FEATURES], df["churn"])
+    auc_knn = scores_k[k_voisins].mean()
+    risque = risque_hors_echantillon(abonnes, k=k_voisins)
     contactes, captes, n, total = courbe_gain(df.loc[risque.index, "churn"], risque)
+
+    # Stabilité : même calcul avec d'autres découpages de la validation croisée
+    parts = []
+    for seed in SEEDS_STABILITE:
+        r = risque_hors_echantillon(abonnes, seed=seed, k=k_voisins)
+        _, c, _, _ = courbe_gain(df.loc[r.index, "churn"], r)
+        parts.append(nb_a_contacter(c, CIBLE_RETENUS) / n)
+    part_min, part_max = min(parts), max(parts)
 
     # Scénario de référence : taux de succès 100 % (capter = retenir)
     k = nb_a_contacter(captes, CIBLE_RETENUS)
@@ -116,8 +130,9 @@ def run(stations, trajets, abonnes):
             "partants est impossible, même en contactant tout le monde."
         ),
         "methode": (
-            "Courbe de gain : abonnés classés par risque de départ (modèle de Q5, "
-            "risque calculé en validation croisée) ; on lit la part à contacter pour "
+            f"Courbe de gain : abonnés classés par risque de départ (KNN de Q5 : part "
+            f"de partants parmi les {k_voisins} plus proches voisins, calculée en "
+            "validation croisée) ; on lit la part à contacter pour "
             "capter une part donnée des partants. Retenus = captés x taux de succès, "
             "donc retenir 50 % suppose de capter 50 % / taux de succès. Seuil de "
             "rentabilité = prix x retenus / contactés. Choisie car elle se lit sans "
@@ -128,8 +143,10 @@ def run(stations, trajets, abonnes):
             f"(validation croisée stratifiée). Contacter {part:.0%} des abonnés suffit à "
             f"capter 50 % des partants, contre 50 % au hasard : le ciblage est environ "
             f"{0.5 / part:.1f} fois plus efficace que le hasard, sans être précis "
-            f"(AUC de Q5 ~0,64). Le résultat repose sur {total} partants seulement : "
-            "à lire comme un ordre de grandeur."
+            f"(AUC du KNN de Q5 : {auc_knn:.2f}). Refait avec {len(parts)} découpages "
+            f"différents, la part à contacter varie de {part_min:.0%} à {part_max:.0%} : "
+            f"le résultat repose sur {total} partants seulement et se lit comme "
+            "« environ un tiers des abonnés »."
         ),
         "decision": (
             f"Cibler en priorité les {part:.0%} d'abonnés les plus à risque, si l'action "
@@ -173,3 +190,10 @@ def _figure(contactes, captes, sc, seuils_par_prix):
     fig.tight_layout()
     fig.savefig(FIG_DIR / "q6_courbe_gain.png", dpi=150)
     plt.close(fig)
+
+
+if __name__ == "__main__":
+    # Lancement direct, depuis la racine du projet : python src/q6_cout_retention.py
+    from data_loader import get_prepared_dataset
+    for cle, valeur in run(*get_prepared_dataset()).items():
+        print(f"{cle.upper()} :\n  {valeur}\n")
